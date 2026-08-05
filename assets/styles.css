@@ -304,6 +304,11 @@ h3 { font-size: 17px; }
 
 /* layout */
 .lp-grid { display: grid; grid-template-columns: minmax(0, 1fr) 372px; gap: 90px; padding: 40px 0 60px; align-items: start; }
+/* The sleeping-arrangements row scrolls horizontally, but it is a plain block —
+   not a flex/grid item — so the overflow:auto "automatic minimum size is 0" rule
+   does not apply to it and its full min-content propagates up. Without min-width:0
+   this grid item stretches to ~5100px and drags the whole page sideways. */
+.lp-main { min-width: 0; }
 .lp-main > section { padding: 30px 0; border-top: 1px solid var(--line); }
 .lp-main > section:first-child { padding-top: 0; border-top: 0; }
 .lp-main h2 { margin-bottom: 18px; }
@@ -640,7 +645,7 @@ ul.host-facts { padding: 0; margin: 0 0 18px; }
 /* ---------- Responsive ---------------------------------------------------- */
 
 @media (max-width: 1128px) {
-  .lp-grid { grid-template-columns: 1fr; gap: 0; }
+  .lp-grid { grid-template-columns: minmax(0, 1fr); gap: 0; }
   .book { display: none; }
   .mbar { display: flex; }
   .rv-list { grid-template-columns: 1fr; }
@@ -669,6 +674,14 @@ ul.host-facts { padding: 0; margin: 0 0 18px; }
   .lp-tools { float: none; margin: 12px 0 0; }
   .lp-head { padding-bottom: 12px; }
   .amen { grid-template-columns: 1fr; }
+  /* Unwrapped, this row's min-content is the sum of the badge and both stats
+     (~398px), which forces the page to scroll sideways on small phones. */
+  .gf { flex-wrap: wrap; gap: 14px; padding: 18px 14px; }
+  .gf-badge { flex: 1 1 100%; justify-content: center; min-width: 0; }
+  .gf-badge h3 { font-size: 15.5px; max-width: 190px; text-align: center; }
+  .gf-badge svg { width: 26px; height: 44px; }
+  .gf-sep { display: none; }
+  .gf-stat { flex: 1 1 40%; }
   .rv-summary { grid-template-columns: 1fr; gap: 22px; }
   .rv-cats { grid-template-columns: repeat(2, 1fr); }
   .ov-head { flex-direction: column; gap: 14px; }
