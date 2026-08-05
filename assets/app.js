@@ -290,8 +290,18 @@
     });
     host.addEventListener('mouseleave', () => { if (hover) { hover = null; render(); } });
 
+    /* Adopt a range chosen elsewhere (header pill, booking widget). Without this
+       a re-render would just repaint the instance's own stale selection. */
+    function set(r) {
+      start = r.checkIn || null;
+      end = r.checkOut || null;
+      hover = null;
+      if (start) { const d = parseYmd(start); cursor = new Date(d.getFullYear(), d.getMonth(), 1); }
+      render();
+    }
+
     render();
-    return { render, get: () => ({ checkIn: start, checkOut: end }) };
+    return { render, set, get: () => ({ checkIn: start, checkOut: end }) };
   }
 
   /* ---------- guest stepper -------------------------------------------------- */
@@ -345,11 +355,13 @@
       <a href="index.html#experiences">Experiences</a>
       <a href="index.html#services">Services</a>
     </nav>
-    ${page === 'listing' ? `<form class="searchbar" id="hdrSearch">
-      <button type="button" class="seg filled" data-open="where"><b>Chandler</b><span>${esc(dates)}</span></button>
+    ${page === 'listing' ? `<form class="searchbar" id="hdrSearch" autocomplete="off">
+      <button type="button" class="seg filled" data-open="dates"><b>Chandler</b><span id="hdrDates">${esc(dates)}</span></button>
       <span class="div"></span>
-      <button type="button" class="seg" data-open="guests"><b>Guests</b><span>${esc(search.guestLabel(s))}</span></button>
+      <button type="button" class="seg filled" data-open="guests"><b>Guests</b><span id="hdrGuestLbl">${esc(search.guestLabel(s))}</span></button>
       <button type="submit" class="go" aria-label="Search">${ICONS.search}</button>
+      <div id="hdrCal" class="cal-pop" hidden></div>
+      <div id="hdrGuests" class="guest-pop" hidden></div>
     </form>` : '<div style="flex:1"></div>'}
     <div class="hdr-right">
       <a class="ghost-btn" href="#" data-demo>Become a host</a>
@@ -389,6 +401,63 @@
 </footer>`;
   }
 
+  /**
+   * Wires the header search pill's date and guest popovers. Pages that render
+   * the listing header must call this, otherwise the pill looks interactive but
+   * opens nothing. `onChange` fires with the updated search state so the host
+   * page can re-render anything priced off it.
+   */
+  function wireHeaderSearch(onChange) {
+    const form = document.getElementById('hdrSearch');
+    if (!form) return;
+    const calBox = document.getElementById('hdrCal');
+    const gBox = document.getElementById('hdrGuests');
+    const state = search.get();
+
+    const close = () => {
+      calBox.hidden = true; gBox.hidden = true;
+      $$('#hdrSearch .seg').forEach((x) => x.classList.remove('active'));
+    };
+    const sync = () => {
+      const s = search.get();
+      const d = document.getElementById('hdrDates');
+      const g = document.getElementById('hdrGuestLbl');
+      if (d) d.textContent = s.checkIn && s.checkOut ? fmtShort(s.checkIn) + ' – ' + fmtShort(s.checkOut) : 'Add dates';
+      if (g) g.textContent = search.guestLabel(s);
+    };
+
+    const cal = Calendar(calBox, {
+      checkIn: state.checkIn, checkOut: state.checkOut, minNights: 2,
+      onChange: (r) => { search.set(r); sync(); onChange && onChange(search.get()); },
+      onDone: close,
+    });
+    GuestPicker(gBox, state, 14, (g) => { search.set(g); sync(); onChange && onChange(search.get()); });
+
+    form.addEventListener('click', (e) => {
+      const seg = e.target.closest('[data-open]');
+      if (!seg) return;
+      const box = seg.dataset.open === 'guests' ? gBox : calBox;
+      const wasOpen = !box.hidden;
+      close();
+      if (!wasOpen) { box.hidden = false; seg.classList.add('active'); }
+    });
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      close();
+      const s = search.get();
+      toast(s.checkIn && s.checkOut
+        ? `Showing ${fmtShort(s.checkIn)} – ${fmtShort(s.checkOut)} for ${search.guestLabel(s)}`
+        : 'Add dates to see the total');
+    });
+    /* capture phase — the popovers rebuild their own innerHTML on click */
+    document.addEventListener('click', (e) => { if (!e.target.closest('#hdrSearch')) close(); }, true);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+
+    sync();
+    /* adopt() lets the host page push in dates picked in another widget */
+    return { sync, close, adopt: (r) => { cal.set(r); sync(); } };
+  }
+
   /* delegated handlers for the demo links + theme toggle */
   function wireChrome() {
     document.addEventListener('click', (e) => {
@@ -404,7 +473,7 @@
     ICONS, amenityIcon, $, $$, el, esc, money, img,
     MON, MON_S, ymd, parseYmd, today, addDays, nights, fmtShort, fmtLong,
     initTheme, toggleTheme, favs, toast, search, Calendar, GuestPicker,
-    header, footer, wireChrome,
+    header, footer, wireChrome, wireHeaderSearch,
   };
 
   initTheme();

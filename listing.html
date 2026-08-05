@@ -529,16 +529,35 @@
   }
 
   /* the big in-page availability calendar stays in sync with the widget */
-  let pageCal;
-  function syncAll(keepOpen) { renderBook(keepOpen); if (pageCal) pageCal.render(); }
+  /* Three widgets can change the dates — the header pill, the booking card and
+     the in-page calendar — so every change is pushed into the other two. */
+  let pageCal, hdrSearch;
+  function syncAll(keepOpen) {
+    renderBook(keepOpen);
+    const range = { checkIn: s.checkIn, checkOut: s.checkOut };
+    if (pageCal) pageCal.set(range);
+    if (hdrSearch) hdrSearch.adopt(range);
+  }
 
   pageCal = K.Calendar($('#pageCal'), {
     checkIn: s.checkIn, checkOut: s.checkOut, minNights: 2,
-    onChange: (r) => { s.checkIn = r.checkIn; s.checkOut = r.checkOut; K.search.set(r); renderBook(); },
+    onChange: (r) => {
+      s.checkIn = r.checkIn; s.checkOut = r.checkOut; K.search.set(r);
+      renderBook();
+      if (hdrSearch) hdrSearch.adopt(r);
+    },
     onDone: () => {},
   });
 
   renderBook();
+
+  /* the header search pill drives the same state as the booking widget */
+  hdrSearch = K.wireHeaderSearch((hs) => {
+    s.checkIn = hs.checkIn; s.checkOut = hs.checkOut;
+    s.adults = hs.adults; s.children = hs.children; s.infants = hs.infants; s.pets = hs.pets;
+    renderBook();
+    if (pageCal) pageCal.set({ checkIn: s.checkIn, checkOut: s.checkOut });
+  });
 
   /* ================= photo tour ================= */
   const rooms = L.rooms;

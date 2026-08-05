@@ -140,6 +140,7 @@ h3 { font-size: 17px; }
 /* ---------- Search pill ----------------------------------------------- */
 
 .searchbar {
+  position: relative; /* anchors the header's date + guest popovers */
   display: flex; align-items: center;
   border: 1px solid var(--line-strong); border-radius: var(--r-pill);
   background: var(--surface); box-shadow: var(--shadow-sm);
@@ -165,6 +166,10 @@ h3 { font-size: 17px; }
 
 .hdr .searchbar { margin: 0 auto; }
 .hdr .searchbar .seg { padding: 7px 16px; }
+.searchbar .seg.active { background: var(--surface-2); }
+#hdrGuests { left: auto; right: 0; width: 340px; }
+/* keep the 660px date popover inside the viewport on narrow desktop windows */
+@media (max-width: 1180px) { #hdrCal { right: auto; left: 50%; transform: translateX(-50%); } }
 
 /* ---------- Hero ------------------------------------------------------- */
 
