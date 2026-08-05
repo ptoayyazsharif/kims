@@ -323,12 +323,13 @@
 
   /* ---------- guest stepper -------------------------------------------------- */
 
-  function GuestPicker(host, state, max, onChange) {
+  function GuestPicker(host, state, max, onChange, opts) {
+    const o = opts || {};
     const rows = [
       ['adults', 'Adults', 'Ages 13 or above', 1],
       ['children', 'Children', 'Ages 2–12', 0],
       ['infants', 'Infants', 'Under 2', 0],
-      ['pets', 'Pets', 'Bringing a service animal?', 0],
+      ['pets', 'Pets', o.petNote || 'Bringing a service animal?', 0],
     ];
     function render() {
       host.innerHTML = rows.map(([k, t, s]) => {
@@ -424,7 +425,7 @@
    * opens nothing. `onChange` fires with the updated search state so the host
    * page can re-render anything priced off it.
    */
-  function wireHeaderSearch(onChange) {
+  function wireHeaderSearch(onChange, opts) {
     const form = document.getElementById('hdrSearch');
     if (!form) return;
     const calBox = document.getElementById('hdrCal');
@@ -448,7 +449,7 @@
       onChange: (r) => { search.set(r); sync(); onChange && onChange(search.get()); },
       onDone: close,
     });
-    GuestPicker(gBox, state, 14, (g) => { search.set(g); sync(); onChange && onChange(search.get()); });
+    GuestPicker(gBox, state, 14, (g) => { search.set(g); sync(); onChange && onChange(search.get()); }, opts && opts.guest);
 
     form.addEventListener('click', (e) => {
       const seg = e.target.closest('[data-open]');

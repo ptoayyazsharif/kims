@@ -69,12 +69,19 @@ pricing: {
   nightly: 389,        // headline rate
   cleaning: 175,
   service: 0.14,       // fraction of the discounted subtotal
-  taxRate: 0.129,      // AZ transaction privilege tax
+  taxRate: 0.129,      // AZ transaction privilege tax, applied to fees too
   poolHeat: 85,        // per day, opt-in
+  petFee: 75,          // per pet, per stay
+  lateCheckoutHourly: 20,  // per hour past the 11:00 AM checkout
+  maxLateHours: 4,     // how far the late-checkout stepper goes
   weeklyDiscount: 0.10,   // 7+ nights
   monthlyDiscount: 0.22,  // 28+ nights
 }
 ```
+
+Fee policy shown on the page: **$75 per pet**, and **late checkout at $20 per hour,
+offered only when the space is free the next day** — the guest picks the hours as
+an opt-in extra and the copy states the host confirms availability.
 
 ## Notes
 

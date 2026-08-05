@@ -301,7 +301,8 @@
     <div class="know">
       <div>
         <h3>House rules</h3>
-        <ul>${L.houseRules.map(r => `<li>${esc(r)}</li>`).join('')}<li>Pets allowed</li></ul>
+        <ul>${L.houseRules.map(r => `<li>${esc(r)}</li>`).join('')}
+            ${L.extraRules.map(r => `<li>${esc(r)}</li>`).join('')}</ul>
         <button class="link-btn" data-open-modal="rulesModal">Show more ${ICONS.chevR}</button>
       </div>
       <div>
@@ -357,7 +358,8 @@
     <h3>House rules</h3>
     <ul class="amen" style="grid-template-columns:1fr">
       ${L.houseRules.map(r => `<li>${ICONS.check}<span>${esc(r)}</span></li>`).join('')}
-      <li>${ICONS.pets}<span>Pets allowed</span></li>
+      <li>${ICONS.pets}<span>Pets allowed — ${money(PR.petFee)} per pet</span></li>
+      <li>${ICONS.clock}<span>Late checkout is offered only when the space is free the following day, at ${money(PR.lateCheckoutHourly)} per hour (up to ${PR.maxLateHours} hours past the 11:00\u202fAM checkout). Ask the host to confirm.</span></li>
       <li>${ICONS.key}<span>Self check-in with keypad — ${esc(L.checkIn)}</span></li>
     </ul>
 
@@ -390,11 +392,25 @@
     if (n >= 28) { discount = base * PR.monthlyDiscount; discountLabel = 'Monthly stay discount'; }
     else if (n >= 7) { discount = base * PR.weeklyDiscount; discountLabel = 'Weekly stay discount'; }
     const afterDiscount = base - discount;
-    const service = afterDiscount * PR.service;
-    const taxes = (afterDiscount + PR.cleaning) * PR.taxRate;
+
+    const pets = s.pets || 0;
+    const petFee = pets * PR.petFee;                       // per pet, per stay
+    const lateHours = s.lateHours || 0;
+    const lateCheckout = lateHours * PR.lateCheckoutHourly; // per hour, if available
     const poolHeat = s.poolHeat ? PR.poolHeat * n : 0;
-    const total = afterDiscount + PR.cleaning + service + taxes + poolHeat;
-    return { n, base, discount, discountLabel, cleaning: PR.cleaning, service, taxes, poolHeat, total };
+
+    const fees = PR.cleaning + petFee + poolHeat + lateCheckout;
+    const service = afterDiscount * PR.service;
+    const taxes = (afterDiscount + fees) * PR.taxRate;      // AZ TPT applies to fees too
+    const total = afterDiscount + fees + service + taxes;
+    return { n, base, discount, discountLabel, cleaning: PR.cleaning,
+             pets, petFee, lateHours, lateCheckout, poolHeat, service, taxes, total };
+  }
+
+  /* standard checkout is 11:00 AM — show what the guest is actually buying */
+  function lateCheckoutTime(hours) {
+    const h = 11 + hours;
+    return (h > 12 ? h - 12 : h) + ':00 ' + (h >= 12 ? 'PM' : 'AM');
   }
 
   function bookHtml(s) {
@@ -429,25 +445,38 @@
         <div class="bill-row"><span class="lbl">${money(PR.nightly)} × ${q.n} nights</span><span>${money(q.base)}</span></div>
         ${q.discount ? `<div class="bill-row discount"><span class="lbl">${q.discountLabel}</span><span>−${money(q.discount)}</span></div>` : ''}
         <div class="bill-row"><span class="lbl">Cleaning fee</span><span>${money(q.cleaning)}</span></div>
+        ${q.petFee ? `<div class="bill-row"><span class="lbl">Pet fee (${money(PR.petFee)} × ${q.pets} pet${q.pets === 1 ? '' : 's'})</span><span>${money(q.petFee)}</span></div>` : ''}
+        ${q.poolHeat ? `<div class="bill-row"><span class="lbl">Pool heating (${money(PR.poolHeat)}/day)</span><span>${money(q.poolHeat)}</span></div>` : ''}
+        ${q.lateCheckout ? `<div class="bill-row"><span class="lbl">Late checkout (${q.lateHours} hr${q.lateHours === 1 ? '' : 's'} × ${money(PR.lateCheckoutHourly)})</span><span>${money(q.lateCheckout)}</span></div>` : ''}
         <div class="bill-row"><span class="lbl">Kimstay service fee</span><span>${money(q.service)}</span></div>
         <div class="bill-row"><span class="lbl">Taxes &amp; AZ TPT</span><span>${money(q.taxes)}</span></div>
-        ${q.poolHeat ? `<div class="bill-row"><span class="lbl">Pool heating (${money(PR.poolHeat)}/day)</span><span>${money(q.poolHeat)}</span></div>` : ''}
         <div class="bill-total"><span>Total (USD)</span><span>${money(q.total)}</span></div>
       </div>
 
-      <label class="book-perk" style="cursor:pointer">
-        ${ICONS.pool}
-        <span><b style="color:var(--text)">Heat the pool</b> — add ${money(PR.poolHeat)}/day
-          <input type="checkbox" id="poolHeat" ${s.poolHeat ? 'checked' : ''} style="float:right;width:18px;height:18px;accent-color:var(--brand)">
-        </span>
-      </label>` : ''}
+      <div class="addons">
+        <label class="addon">
+          ${ICONS.pool}
+          <span><b>Heat the pool</b><em>${money(PR.poolHeat)} per day</em></span>
+          <input type="checkbox" id="poolHeat" ${s.poolHeat ? 'checked' : ''}>
+        </label>
+        <div class="addon">
+          ${ICONS.clock}
+          <span><b>Late checkout</b><em>${money(PR.lateCheckoutHourly)} per hour · only if the space is free</em></span>
+          <div class="stepper sm">
+            <button type="button" data-late="-1" ${q.lateHours <= 0 ? 'disabled' : ''} aria-label="Fewer late checkout hours">${ICONS.minus}</button>
+            <output aria-live="polite">${q.lateHours ? q.lateHours + 'h' : '—'}</output>
+            <button type="button" data-late="1" ${q.lateHours >= PR.maxLateHours ? 'disabled' : ''} aria-label="More late checkout hours">${ICONS.plus}</button>
+          </div>
+        </div>
+      </div>
+      ${q.lateHours ? `<p class="book-note" style="margin-top:10px">Checkout would move to ${lateCheckoutTime(q.lateHours)} — confirmed by the host closer to your stay.</p>` : ''}` : ''}
 
       <div class="book-perk">${ICONS.sparkle}<span>Rare find — this home is usually booked out for the dates you picked.</span></div>
     </div>
     <button class="report" data-demo>${'Report this listing'}</button>`;
   }
 
-  let s = Object.assign({ poolHeat: false }, state);
+  let s = Object.assign({ poolHeat: false, lateHours: 0 }, state);
 
   /* The whole card is rebuilt whenever the quote changes, so a popover that is
      mid-interaction has to be reopened afterwards — otherwise picking a
@@ -500,30 +529,41 @@
     if (!e.target.closest('#bookCard')) closePopovers();
   }, true);
 
+  /* Delegated once onto #bookCard, which survives every re-render. Binding this
+     inside wireBook() would stack a new listener per render, so a single click
+     would fire as many times as the card had been rebuilt. */
+  $('#bookCard').addEventListener('click', (e) => {
+    const f = e.target.closest('[data-open]');
+    if (f) {
+      const box = f.dataset.open === 'guests' ? $('#bookGuests') : $('#bookCal');
+      if (!box) return;
+      const wasOpen = !box.hidden;
+      closePopovers();
+      if (!wasOpen) { box.hidden = false; f.classList.add('active'); K.fitPopover(box); }
+      return;
+    }
+    const late = e.target.closest('[data-late]');
+    if (late) {
+      s.lateHours = Math.max(0, Math.min(PR.maxLateHours, (s.lateHours || 0) + (+late.dataset.late)));
+      renderBook();
+      return;
+    }
+    if (e.target.closest('#reserveBtn')) reserve();
+  });
+
+  /* Re-run after each render: these bind to freshly created nodes, so unlike the
+     delegated handler above they cannot accumulate. */
   function wireBook() {
     const calBox = $('#bookCal'), gBox = $('#bookGuests');
     if (!calBox) return;
-
-    const close = closePopovers;
 
     K.Calendar(calBox, {
       checkIn: s.checkIn, checkOut: s.checkOut, minNights: 2,
       onChange: (r) => { s.checkIn = r.checkIn; s.checkOut = r.checkOut; K.search.set(r); syncAll('bookCal'); },
       onDone: () => renderBook(),
     });
-    K.GuestPicker(gBox, s, 14, (g) => { K.search.set(g); renderBook('bookGuests'); });
-
-    $('#bookCard').addEventListener('click', (e) => {
-      const f = e.target.closest('[data-open]');
-      if (f) {
-        const box = f.dataset.open === 'guests' ? gBox : calBox;
-        const wasOpen = !box.hidden;
-        close();
-        if (!wasOpen) { box.hidden = false; f.classList.add('active'); K.fitPopover(box); }
-        return;
-      }
-      if (e.target.closest('#reserveBtn')) reserve();
-    });
+    K.GuestPicker(gBox, s, 14, (g) => { K.search.set(g); renderBook('bookGuests'); },
+      { petNote: `${money(PR.petFee)} per pet · service animals are free` });
 
     const ph = $('#poolHeat');
     if (ph) ph.addEventListener('change', () => { s.poolHeat = ph.checked; renderBook(); });
@@ -558,7 +598,7 @@
     s.adults = hs.adults; s.children = hs.children; s.infants = hs.infants; s.pets = hs.pets;
     renderBook();
     if (pageCal) pageCal.set({ checkIn: s.checkIn, checkOut: s.checkOut });
-  });
+  }, { guest: { petNote: `${money(PR.petFee)} per pet · service animals are free` } });
 
   /* ================= photo tour ================= */
   const rooms = L.rooms;
