@@ -1,0 +1,644 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Chandler Family Retreat — Private Heated Pool & Mini Golf | Kimstay</title>
+<meta name="description" content="Entire home in Chandler, Arizona. 14 guests, 4 bedrooms, 9 beds, 2 baths. Private heated pool, mini golf, fire pit. 4.91 ★ from 69 reviews.">
+<meta name="color-scheme" content="light dark">
+<link rel="preconnect" href="https://a0.muscache.com" crossorigin>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🏜️</text></svg>">
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+
+<div id="chrome-top"></div>
+
+<main class="lp">
+  <div class="lp-head">
+    <div class="lp-tools" id="tools"></div>
+    <h1 id="title"></h1>
+  </div>
+
+  <div class="gal" id="gallery"></div>
+
+  <div class="lp-grid">
+    <div class="lp-main" id="main"></div>
+    <aside class="book"><div id="bookCard"></div></aside>
+  </div>
+</main>
+
+<div id="chrome-bottom"></div>
+
+<!-- mobile booking bar -->
+<div class="mbar" id="mbar"></div>
+
+<!-- photo tour -->
+<div class="modal" id="tourModal" role="dialog" aria-modal="true" aria-label="Photo tour">
+  <div class="modal-bg" data-close></div>
+  <div class="modal-panel tour-panel">
+    <div class="modal-head">
+      <button class="icon-btn" data-close aria-label="Close photo tour"></button>
+      <h2>Photo tour</h2>
+    </div>
+    <div class="modal-body tour-body">
+      <div class="tour-nav" id="tourNav"></div>
+      <div class="tour-inner" id="tourRooms"></div>
+    </div>
+  </div>
+</div>
+
+<!-- amenities -->
+<div class="modal" id="amenModal" role="dialog" aria-modal="true" aria-label="All amenities">
+  <div class="modal-bg" data-close></div>
+  <div class="modal-panel">
+    <div class="modal-head"><button class="icon-btn" data-close aria-label="Close"></button><h2>What this place offers</h2></div>
+    <div class="modal-body" id="amenAll"></div>
+  </div>
+</div>
+
+<!-- reviews -->
+<div class="modal" id="revModal" role="dialog" aria-modal="true" aria-label="All reviews">
+  <div class="modal-bg" data-close></div>
+  <div class="modal-panel">
+    <div class="modal-head"><button class="icon-btn" data-close aria-label="Close"></button><h2>Reviews</h2></div>
+    <div class="modal-body" id="revAll"></div>
+  </div>
+</div>
+
+<!-- house rules -->
+<div class="modal" id="rulesModal" role="dialog" aria-modal="true" aria-label="House rules">
+  <div class="modal-bg" data-close></div>
+  <div class="modal-panel">
+    <div class="modal-head"><button class="icon-btn" data-close aria-label="Close"></button><h2>Things to know</h2></div>
+    <div class="modal-body" id="rulesAll"></div>
+  </div>
+</div>
+
+<!-- lightbox -->
+<div class="lb" id="lb" role="dialog" aria-modal="true" aria-label="Photo viewer">
+  <div class="lb-top">
+    <button class="icon-btn" data-lb-close aria-label="Close viewer"></button>
+    <span class="count" id="lbCount"></span>
+  </div>
+  <div class="lb-stage">
+    <button class="lb-arrow prev" data-lb="-1" aria-label="Previous photo"></button>
+    <img id="lbImg" alt="">
+    <button class="lb-arrow next" data-lb="1" aria-label="Next photo"></button>
+  </div>
+  <div class="lb-strip" id="lbStrip"></div>
+</div>
+
+<script src="assets/data.js"></script>
+<script src="assets/app.js"></script>
+<script>
+(function () {
+  'use strict';
+  const K = window.KS, D = window.SITE, L = D.listing, PR = L.pricing;
+  const { $, $$, el, esc, money, img, ICONS } = K;
+
+  const PHOTOS = L.hero.map(h => h.url);
+  const state = K.search.get();
+
+  /* ================= chrome ================= */
+  $('#chrome-top').outerHTML = K.header('listing');
+  $('#chrome-bottom').outerHTML = K.footer();
+  K.wireChrome();
+  $('#title').textContent = L.title;
+  document.title = L.title + ' | Kimstay';
+
+  /* ================= tools ================= */
+  const saved = K.favs.has(L.id);
+  $('#tools').innerHTML = `
+    <button class="lp-tool" id="shareBtn">${ICONS.share} Share</button>
+    <button class="lp-tool${saved ? ' on' : ''}" id="saveBtn" aria-pressed="${saved}">${ICONS.heart} <span>${saved ? 'Saved' : 'Save'}</span></button>`;
+
+  $('#saveBtn').addEventListener('click', () => {
+    const on = K.favs.toggle(L.id);
+    $('#saveBtn').classList.toggle('on', on);
+    $('#saveBtn').setAttribute('aria-pressed', on);
+    K.$('span', $('#saveBtn')).textContent = on ? 'Saved' : 'Save';
+    K.toast(on ? 'Saved to your wishlist' : 'Removed from your wishlist');
+  });
+  $('#shareBtn').addEventListener('click', async () => {
+    const data = { title: L.title, text: `${L.title} — ${L.location}`, url: location.href };
+    try {
+      if (navigator.share) { await navigator.share(data); return; }
+      await navigator.clipboard.writeText(location.href);
+      K.toast('Link copied to clipboard');
+    } catch (e) { K.toast('Sharing is not available in this browser'); }
+  });
+
+  /* ================= gallery ================= */
+  $('#gallery').innerHTML = PHOTOS.slice(0, 5).map((u, i) =>
+    `<button data-photo="${i}" aria-label="Open photo ${i + 1}"><img src="${img(u, i ? 640 : 1200)}" alt="${esc(L.title)} — photo ${i + 1}" ${i > 1 ? 'loading="lazy"' : ''} decoding="async"></button>`
+  ).join('') + `<button class="gal-all" id="showAll">${ICONS.grid} Show all ${PHOTOS.length} photos</button>`;
+
+  /* ================= main column ================= */
+
+  const starRow = (n) => Array.from({ length: 5 }, (_, i) => ICONS.star).join('');
+
+  const catIcon = { CLEANLINESS: 'sparkle', ACCURACY: 'check', CHECKIN: 'key', COMMUNICATION: 'chat', LOCATION: 'pin', VALUE: 'tag' };
+
+  /* the host highlights arrive as free text, so pick a glyph from the wording */
+  const hostIcon = (t) => /school|universit/i.test(t) ? ICONS.school : /born|19\d\d/i.test(t) ? ICONS.events : ICONS.info;
+
+  const topAmenities = L.topAmenities.slice(0, 10);
+  const amenityCount = L.amenityGroups.reduce((n, g) => n + g.items.length, 0);
+
+  $('#main').innerHTML = `
+
+  <!-- overview -->
+  <section>
+    <div class="ov-head">
+      <div>
+        <h2>Entire home in ${esc(L.city)}</h2>
+        <div class="ov-meta">${L.overview.join(' · ')}</div>
+        <div class="ov-meta" style="margin-top:6px;display:flex;align-items:center;gap:5px">
+          ${ICONS.star} <b style="color:var(--text)">${L.rating}</b>
+          <a href="#reviews" style="text-decoration:underline">${L.reviewCount} reviews</a>
+        </div>
+      </div>
+      <div class="ov-host">
+        <img src="${img(L.host.pic, 120)}" alt="${esc(L.host.name)}" width="48" height="48">
+        <div><b>Hosted by ${esc(L.host.name)}</b><span>${L.host.stats.find(s => s.label === 'Years hosting').value} years hosting · Verified</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- guest favourite banner -->
+  <section>
+    <div class="gf">
+      <div class="gf-badge">
+        ${ICONS.laurel}
+        <h3>One of the most loved homes on Kimstay</h3>
+        ${ICONS.laurel.replace('<svg', '<svg style="transform:scaleX(-1)"')}
+      </div>
+      <div class="gf-sep"></div>
+      <div class="gf-stat">
+        <b>${L.rating}</b>
+        <div class="gf-stars">${starRow()}</div>
+      </div>
+      <div class="gf-sep"></div>
+      <div class="gf-stat"><b>${L.reviewCount}</b><span>Reviews</span></div>
+    </div>
+  </section>
+
+  <!-- highlights -->
+  <section>
+    ${L.highlights.map(h => `<div class="hl">${ICONS.sparkle}<div><b>${esc(h.headline)}</b><p>${esc(h.body)}</p></div></div>`).join('')}
+    <div class="hl">${ICONS.key}<div><b>Self check-in</b><p>${esc(L.checkIn)} — check in on your own schedule after 4:00 PM.</p></div></div>
+  </section>
+
+  <!-- description -->
+  <section>
+    <p class="desc">${esc(L.description)}</p>
+    <p class="muted" style="font-size:13px;margin-top:14px">${esc(L.license)}</p>
+    <button class="link-btn" data-open-modal="rulesModal">Show more ${ICONS.chevR}</button>
+  </section>
+
+  <!-- sleeping -->
+  <section>
+    <h2>Where you'll sleep</h2>
+    <div class="sleep">
+      ${L.sleeping.map(s => `<div class="sleep-card">
+        <img src="${img(s.photo, 400)}" alt="${esc(s.name)}" loading="lazy" decoding="async">
+        <div><b>${esc(s.name)}</b><p>${s.desc.map(esc).join(', ')}</p></div>
+      </div>`).join('')}
+    </div>
+  </section>
+
+  <!-- amenities -->
+  <section>
+    <h2>What this place offers</h2>
+    <ul class="amen">
+      ${topAmenities.map(a => `<li class="${a.available ? '' : 'off'}">${K.amenityIcon(a)}<span>${esc(a.title)}</span></li>`).join('')}
+    </ul>
+    <button class="btn-outline" data-open-modal="amenModal">Show all ${amenityCount} amenities</button>
+  </section>
+
+  <!-- availability -->
+  <section id="availability">
+    <div id="pageCal" class="page-cal"></div>
+  </section>
+
+  <!-- reviews -->
+  <section id="reviews">
+    <div class="rv-summary">
+      <div class="rv-big">
+        <b>${L.rating}</b>
+        <div class="gf-stars" style="justify-content:center">${starRow()}</div>
+        <p>${L.reviewCount} reviews</p>
+      </div>
+      <div class="rv-bars">
+        ${L.ratingDistribution.map(d => `<div class="rv-bar">
+          <span>${d.stars}</span>
+          <span class="track"><i style="width:${Math.round(d.p * 100)}%"></i></span>
+          <span>${d.pct}</span>
+        </div>`).join('')}
+      </div>
+    </div>
+
+    <div class="rv-cats">
+      ${L.categoryRatings.map(c => `<div class="rv-cat">
+        <span>${esc(c.label)}</span><b>${c.rating}</b>${ICONS[catIcon[c.type] || 'dot']}
+      </div>`).join('')}
+    </div>
+
+    <h3 style="font-size:16px;margin-bottom:14px">What guests mention most</h3>
+    <div class="rv-tags">
+      ${L.reviewTags.map(t => `<span class="rv-tag"><img src="${t.icon}" alt="" width="16" height="16" loading="lazy"><b>${esc(t.name)}</b> ${t.count}</span>`).join('')}
+    </div>
+
+    <div class="rv-list" id="revList"></div>
+    <button class="btn-outline" data-open-modal="revModal">Show all ${L.reviewCount} reviews</button>
+  </section>
+
+  <!-- map -->
+  <section id="location">
+    <h2>Where you'll be</h2>
+    <p class="muted" style="margin:-8px 0 16px">${esc(L.location)}</p>
+    <div class="map">
+      <iframe title="Map of ${esc(L.city)}" loading="lazy" referrerpolicy="no-referrer-when-downgrade"
+        src="https://www.openstreetmap.org/export/embed.html?bbox=${L.lng - 0.045}%2C${L.lat - 0.028}%2C${L.lng + 0.045}%2C${L.lat + 0.028}&layer=mapnik&marker=${L.lat}%2C${L.lng}"></iframe>
+    </div>
+    <p class="desc" style="margin-top:18px">Quiet single-level neighbourhood in Chandler. La Paloma Park is steps away and Hunt Park is about a 10&#8209;minute walk. Santan Mountain Casino, MLB spring training parks, shopping, hiking and restaurants are all a short drive.</p>
+  </section>
+
+  <!-- host -->
+  <section id="host">
+    <h2>Meet your host</h2>
+    <div class="host-card">
+      <div class="host-panel">
+        <img src="${img(L.host.pic, 240)}" alt="${esc(L.host.name)}" width="90" height="90">
+        <b>${esc(L.host.name)}</b>
+        <span>Host</span>
+        <div class="host-stats">
+          ${L.host.stats.map(s => `<div class="host-stat"><b>${esc(s.value)}</b><span>${esc(s.label)}</span></div>`).join('')}
+        </div>
+      </div>
+      <div>
+        <ul class="host-facts">
+          ${L.host.highlights.map(h => `<li>${hostIcon(h)}<span>${esc(h)}</span></li>`).join('')}
+          <li>${ICONS.check}<span>Identity verified</span></li>
+        </ul>
+        <h3 style="margin-bottom:10px">Host details</h3>
+        <ul class="host-facts">
+          <li>${ICONS.clock}<span>Response rate: 100%</span></li>
+          <li>${ICONS.info}<span>Responds within an hour</span></li>
+        </ul>
+        <button class="btn-outline" data-demo style="margin-top:8px">Message host</button>
+        <p class="muted" style="font-size:12.5px;margin-top:18px;display:flex;gap:9px;align-items:flex-start">
+          ${ICONS.shield}<span>To protect your payment, never transfer money or communicate outside of the Kimstay website or app.</span>
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- things to know -->
+  <section id="know">
+    <h2>Things to know</h2>
+    <div class="know">
+      <div>
+        <h3>House rules</h3>
+        <ul>${L.houseRules.map(r => `<li>${esc(r)}</li>`).join('')}<li>Pets allowed</li></ul>
+        <button class="link-btn" data-open-modal="rulesModal">Show more ${ICONS.chevR}</button>
+      </div>
+      <div>
+        <h3>Safety &amp; property</h3>
+        <ul>${L.safety.map(r => `<li>${esc(r)}</li>`).join('')}<li>Pool/hot tub without a gate or lock</li></ul>
+        <button class="link-btn" data-open-modal="rulesModal">Show more ${ICONS.chevR}</button>
+      </div>
+      <div>
+        <h3>Cancellation policy</h3>
+        <ul>
+          <li>Free cancellation for 48 hours after booking.</li>
+          <li>Cancel before check-in on ${K.fmtLong(state.checkIn)} for a partial refund.</li>
+          <li>Review the full policy before booking.</li>
+        </ul>
+        <button class="link-btn" data-open-modal="rulesModal">Show more ${ICONS.chevR}</button>
+      </div>
+    </div>
+  </section>`;
+
+  /* ================= reviews list ================= */
+  const revCard = (r) => `
+    <div class="rv-item">
+      <div class="rv-who">
+        <span class="ini">${esc(r.name[0])}</span>
+        <div><b>${esc(r.name)}</b><span>${esc(r.from)}</span></div>
+      </div>
+      <div class="rv-meta">
+        <span class="rv-stars">${Array.from({ length: r.rating }, () => ICONS.star).join('')}</span>
+        <span>·</span><span>${K.MON[+r.date.split('-')[1] - 1]} ${r.date.split('-')[0]}</span>
+        <span>·</span><span>Stayed with family</span>
+      </div>
+      <p class="rv-text">${esc(r.text)}</p>
+    </div>`;
+
+  $('#revList').innerHTML = D.reviews.slice(0, 6).map(revCard).join('');
+  $('#revAll').innerHTML =
+    `<p class="muted" style="margin:0 0 22px;font-size:13px">Airbnb does not expose review text publicly, so the reviews below are placeholder content written for this mockup. The rating, the ${L.reviewCount} review count, the star distribution and the topic tags are real listing data.</p>
+     <div style="display:grid;gap:28px">${D.reviews.map(revCard).join('')}</div>`;
+
+  /* ================= amenities modal ================= */
+  $('#amenAll').innerHTML = L.amenityGroups.map(g => `
+    <h3>${esc(g.title)}</h3>
+    <ul class="amen" style="grid-template-columns:1fr">
+      ${g.items.map(a => `<li class="${a.available ? '' : 'off'}">${K.amenityIcon(a)}<span>${esc(a.title)}</span></li>`).join('')}
+    </ul>`).join('');
+
+  /* ================= rules modal ================= */
+  $('#rulesAll').innerHTML = `
+    <h3>About this space</h3>
+    <p class="desc">${esc(L.description)}</p>
+    <p class="muted" style="font-size:13px">${esc(L.license)}</p>
+
+    <h3>House rules</h3>
+    <ul class="amen" style="grid-template-columns:1fr">
+      ${L.houseRules.map(r => `<li>${ICONS.check}<span>${esc(r)}</span></li>`).join('')}
+      <li>${ICONS.pets}<span>Pets allowed</span></li>
+      <li>${ICONS.key}<span>Self check-in with keypad — ${esc(L.checkIn)}</span></li>
+    </ul>
+
+    <h3>Pool rules</h3>
+    <ul class="amen" style="grid-template-columns:1fr">
+      ${L.poolRules.split('\n').slice(1).filter(Boolean).map(r => `<li>${ICONS.pool}<span>${esc(r.trim())}</span></li>`).join('')}
+    </ul>
+    <p class="muted" style="font-size:13.5px">${esc(L.poolNote)}</p>
+
+    <h3>Safety &amp; property</h3>
+    <ul class="amen" style="grid-template-columns:1fr">
+      ${L.safety.map(r => `<li>${ICONS.smoke}<span>${esc(r)}</span></li>`).join('')}
+      <li>${ICONS.pool}<span>Pool/hot tub without a gate or lock</span></li>
+    </ul>
+
+    <h3>Cancellation policy</h3>
+    <ul class="amen" style="grid-template-columns:1fr">
+      <li>${ICONS.check}<span>Free cancellation for 48 hours after booking</span></li>
+      <li>${ICONS.cal}<span>Cancel at least 5 days before check-in for a 50% refund of the nightly rate</span></li>
+      <li>${ICONS.info}<span>The cleaning fee is always refunded if you cancel before check-in</span></li>
+    </ul>`;
+
+  /* ================= booking widget ================= */
+
+  function quote(s) {
+    const n = (s.checkIn && s.checkOut) ? K.nights(s.checkIn, s.checkOut) : 0;
+    if (!n) return { n: 0 };
+    const base = PR.nightly * n;
+    let discount = 0, discountLabel = '';
+    if (n >= 28) { discount = base * PR.monthlyDiscount; discountLabel = 'Monthly stay discount'; }
+    else if (n >= 7) { discount = base * PR.weeklyDiscount; discountLabel = 'Weekly stay discount'; }
+    const afterDiscount = base - discount;
+    const service = afterDiscount * PR.service;
+    const taxes = (afterDiscount + PR.cleaning) * PR.taxRate;
+    const poolHeat = s.poolHeat ? PR.poolHeat * n : 0;
+    const total = afterDiscount + PR.cleaning + service + taxes + poolHeat;
+    return { n, base, discount, discountLabel, cleaning: PR.cleaning, service, taxes, poolHeat, total };
+  }
+
+  function bookHtml(s) {
+    const q = quote(s);
+    const inLbl = s.checkIn ? K.fmtShort(s.checkIn) : 'Add date';
+    const outLbl = s.checkOut ? K.fmtShort(s.checkOut) : 'Add date';
+    return `
+    <div class="book-card">
+      <div class="book-price">
+        <b>${money(PR.nightly)}</b><span>night</span>
+        ${q.n ? `<span class="muted" style="margin-left:auto;font-size:13.5px">${ICONS.star ? '' : ''}${q.n} night${q.n === 1 ? '' : 's'}</span>` : ''}
+      </div>
+
+      <div class="book-anchor">
+        <div class="book-fields">
+          <div class="book-dates">
+            <button type="button" class="bf${s.checkIn ? '' : ' empty'}" data-open="dates"><b>Check-in</b><span>${inLbl}</span></button>
+            <button type="button" class="bf${s.checkOut ? '' : ' empty'}" data-open="dates"><b>Checkout</b><span>${outLbl}</span></button>
+          </div>
+          <div class="book-guests">
+            <button type="button" class="bf" data-open="guests"><b>Guests</b><span>${esc(K.search.guestLabel(s))}</span>${ICONS.chevD.replace('<svg', '<svg class="chev"')}</button>
+          </div>
+        </div>
+        <div id="bookCal" class="cal-pop" hidden></div>
+        <div id="bookGuests" class="guest-pop" hidden></div>
+      </div>
+
+      <button class="btn-primary" id="reserveBtn" ${q.n ? '' : 'disabled'}>${q.n ? 'Reserve' : 'Check availability'}</button>
+      <p class="book-note">${q.n ? "You won't be charged yet" : 'Add your dates to see the total'}</p>
+
+      ${q.n ? `<div class="bill">
+        <div class="bill-row"><span class="lbl">${money(PR.nightly)} × ${q.n} nights</span><span>${money(q.base)}</span></div>
+        ${q.discount ? `<div class="bill-row discount"><span class="lbl">${q.discountLabel}</span><span>−${money(q.discount)}</span></div>` : ''}
+        <div class="bill-row"><span class="lbl">Cleaning fee</span><span>${money(q.cleaning)}</span></div>
+        <div class="bill-row"><span class="lbl">Kimstay service fee</span><span>${money(q.service)}</span></div>
+        <div class="bill-row"><span class="lbl">Taxes &amp; AZ TPT</span><span>${money(q.taxes)}</span></div>
+        ${q.poolHeat ? `<div class="bill-row"><span class="lbl">Pool heating (${money(PR.poolHeat)}/day)</span><span>${money(q.poolHeat)}</span></div>` : ''}
+        <div class="bill-total"><span>Total (USD)</span><span>${money(q.total)}</span></div>
+      </div>
+
+      <label class="book-perk" style="cursor:pointer">
+        ${ICONS.pool}
+        <span><b style="color:var(--text)">Heat the pool</b> — add ${money(PR.poolHeat)}/day
+          <input type="checkbox" id="poolHeat" ${s.poolHeat ? 'checked' : ''} style="float:right;width:18px;height:18px;accent-color:var(--brand)">
+        </span>
+      </label>` : ''}
+
+      <div class="book-perk">${ICONS.sparkle}<span>Rare find — this home is usually booked out for the dates you picked.</span></div>
+    </div>
+    <button class="report" data-demo>${'Report this listing'}</button>`;
+  }
+
+  let s = Object.assign({ poolHeat: false }, state);
+
+  /* The whole card is rebuilt whenever the quote changes, so a popover that is
+     mid-interaction has to be reopened afterwards — otherwise picking a
+     check-in date would dismiss the calendar before you can pick a checkout. */
+  function renderBook(keepOpen) {
+    $('#bookCard').innerHTML = bookHtml(s);
+    wireBook();
+    renderMobileBar();
+    if (!keepOpen) return;
+    const box = $('#' + keepOpen);
+    if (!box) return;
+    box.hidden = false;
+    const field = $(`#bookCard [data-open="${keepOpen === 'bookGuests' ? 'guests' : 'dates'}"]`);
+    field && field.classList.add('active');
+  }
+
+  function renderMobileBar() {
+    const q = quote(s);
+    $('#mbar').innerHTML = `
+      <div>
+        <b>${money(PR.nightly)} <span style="font-weight:400;font-size:14px">night</span></b>
+        <span>${q.n ? K.fmtShort(s.checkIn) + ' – ' + K.fmtShort(s.checkOut) + ' · ' + money(q.total) + ' total' : 'Add dates'}</span>
+      </div>
+      <button class="btn-primary" id="mReserve">${q.n ? 'Reserve' : 'Check availability'}</button>`;
+    $('#mReserve').addEventListener('click', () => {
+      if (!quote(s).n) { document.getElementById('availability').scrollIntoView({ behavior: 'smooth' }); return; }
+      reserve();
+    });
+    K.$('span', $('#mbar')).addEventListener('click', () => document.getElementById('availability').scrollIntoView({ behavior: 'smooth' }));
+  }
+
+  function reserve() {
+    const q = quote(s);
+    K.toast(`Demo checkout — ${q.n} nights, ${K.search.guestLabel(s)}, ${money(q.total)} total. No payment is taken.`);
+  }
+
+  /* Popovers live inside #bookCard, which is re-rendered wholesale on every
+     change, so the outside-click listener is registered once here and reaches
+     the current boxes by id. It runs in the capture phase because the calendar
+     and guest picker replace their own innerHTML on click, detaching e.target
+     before a bubbling listener could tell inside from outside. */
+  function closePopovers() {
+    const c = $('#bookCal'), g = $('#bookGuests');
+    if (c) c.hidden = true;
+    if (g) g.hidden = true;
+    $$('.bf').forEach(b => b.classList.remove('active'));
+  }
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#bookCard')) closePopovers();
+  }, true);
+
+  function wireBook() {
+    const calBox = $('#bookCal'), gBox = $('#bookGuests');
+    if (!calBox) return;
+
+    const close = closePopovers;
+
+    K.Calendar(calBox, {
+      checkIn: s.checkIn, checkOut: s.checkOut, minNights: 2,
+      onChange: (r) => { s.checkIn = r.checkIn; s.checkOut = r.checkOut; K.search.set(r); syncAll('bookCal'); },
+      onDone: () => renderBook(),
+    });
+    K.GuestPicker(gBox, s, 14, (g) => { K.search.set(g); renderBook('bookGuests'); });
+
+    $('#bookCard').addEventListener('click', (e) => {
+      const f = e.target.closest('[data-open]');
+      if (f) {
+        const box = f.dataset.open === 'guests' ? gBox : calBox;
+        const wasOpen = !box.hidden;
+        close();
+        if (!wasOpen) { box.hidden = false; f.classList.add('active'); }
+        return;
+      }
+      if (e.target.closest('#reserveBtn')) reserve();
+    });
+
+    const ph = $('#poolHeat');
+    if (ph) ph.addEventListener('change', () => { s.poolHeat = ph.checked; renderBook(); });
+  }
+
+  /* the big in-page availability calendar stays in sync with the widget */
+  let pageCal;
+  function syncAll(keepOpen) { renderBook(keepOpen); if (pageCal) pageCal.render(); }
+
+  pageCal = K.Calendar($('#pageCal'), {
+    checkIn: s.checkIn, checkOut: s.checkOut, minNights: 2,
+    onChange: (r) => { s.checkIn = r.checkIn; s.checkOut = r.checkOut; K.search.set(r); renderBook(); },
+    onDone: () => {},
+  });
+
+  renderBook();
+
+  /* ================= photo tour ================= */
+  const rooms = L.rooms;
+
+  $('#tourNav').innerHTML = rooms.map((r, i) =>
+    `<button data-room="${i}"><img src="${img(r.photos[0].url, 240)}" alt="" loading="lazy"><b>${esc(r.title)}</b></button>`).join('');
+
+  $('#tourRooms').innerHTML = rooms.map((r, ri) => `
+    <div class="tour-room" id="room-${ri}">
+      <h3>${esc(r.title)}</h3>
+      <div class="tour-photos">
+        ${r.photos.map((p, pi) => {
+          const idx = PHOTOS.indexOf(p.url);
+          const wide = p.o === 'L' && (pi % 3 === 0);
+          return `<button class="${wide ? 'wide' : ''}" data-photo="${idx}" aria-label="Open ${esc(r.title)} photo ${pi + 1}">
+            <img src="${img(p.url, wide ? 900 : 520)}" alt="${esc(r.title)} — photo ${pi + 1}" loading="lazy" decoding="async"></button>`;
+        }).join('')}
+      </div>
+    </div>`).join('');
+
+  $('#tourNav').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-room]');
+    if (!b) return;
+    $$('#tourNav button').forEach(x => x.classList.toggle('on', x === b));
+    document.getElementById('room-' + b.dataset.room).scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  /* ================= modals ================= */
+  function openModal(id) {
+    const m = document.getElementById(id);
+    m.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    const btn = K.$('[data-close]', m.querySelector('.modal-head'));
+    btn && btn.focus();
+  }
+  function closeModals() {
+    $$('.modal.open').forEach(m => m.classList.remove('open'));
+    if (!$('#lb').classList.contains('open')) document.body.style.overflow = '';
+  }
+
+  $$('.modal-head [data-close]').forEach(b => { b.innerHTML = ICONS.close; });
+
+  document.addEventListener('click', (e) => {
+    const open = e.target.closest('[data-open-modal]');
+    if (open) { openModal(open.dataset.openModal); return; }
+    if (e.target.closest('[data-close]')) closeModals();
+    if (e.target.closest('#showAll')) openModal('tourModal');
+  });
+
+  /* ================= lightbox ================= */
+  const lb = $('#lb'), lbImg = $('#lbImg'), lbCount = $('#lbCount'), lbStrip = $('#lbStrip');
+  let lbI = 0;
+
+  $('[data-lb-close]').innerHTML = ICONS.close;
+  K.$('.lb-arrow.prev').innerHTML = ICONS.chevL;
+  K.$('.lb-arrow.next').innerHTML = ICONS.chevR;
+  lbStrip.innerHTML = PHOTOS.map((u, i) => `<img src="${img(u, 160)}" data-i="${i}" alt="Photo ${i + 1}" loading="lazy">`).join('');
+
+  function showLb(i) {
+    lbI = (i + PHOTOS.length) % PHOTOS.length;
+    lbImg.src = img(PHOTOS[lbI], 1600);
+    lbImg.alt = `${L.title} — photo ${lbI + 1} of ${PHOTOS.length}`;
+    lbCount.textContent = `${lbI + 1} / ${PHOTOS.length}`;
+    $$('#lbStrip img').forEach((t, j) => t.classList.toggle('on', j === lbI));
+    const on = lbStrip.children[lbI];
+    on && on.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+  }
+  function openLb(i) { lb.classList.add('open'); document.body.style.overflow = 'hidden'; showLb(i); }
+  function closeLb() { lb.classList.remove('open'); if (!$('.modal.open')) document.body.style.overflow = ''; }
+
+  document.addEventListener('click', (e) => {
+    const p = e.target.closest('[data-photo]');
+    if (p) { openLb(+p.dataset.photo); return; }
+    if (e.target.closest('[data-lb-close]')) { closeLb(); return; }
+    const arrow = e.target.closest('[data-lb]');
+    if (arrow) { showLb(lbI + (+arrow.dataset.lb)); return; }
+    const thumb = e.target.closest('#lbStrip img');
+    if (thumb) showLb(+thumb.dataset.i);
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (lb.classList.contains('open')) {
+      if (e.key === 'Escape') closeLb();
+      if (e.key === 'ArrowRight') showLb(lbI + 1);
+      if (e.key === 'ArrowLeft') showLb(lbI - 1);
+      return;
+    }
+    if (e.key === 'Escape') { closeModals(); closePopovers(); }
+  });
+
+  /* swipe on the lightbox */
+  let tx = null;
+  lb.addEventListener('touchstart', (e) => { tx = e.touches[0].clientX; }, { passive: true });
+  lb.addEventListener('touchend', (e) => {
+    if (tx === null) return;
+    const dx = e.changedTouches[0].clientX - tx;
+    if (Math.abs(dx) > 45) showLb(lbI + (dx < 0 ? 1 : -1));
+    tx = null;
+  }, { passive: true });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kimstay — Homes & stays in Chandler, Arizona</title>
+<meta name="description" content="Kimstay is a front-end booking mockup: browse desert homes with private pools, real photos and live price estimates. Demo only.">
+<meta name="color-scheme" content="light dark">
+<link rel="preconnect" href="https://a0.muscache.com" crossorigin>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><text y='26' font-size='26'>🏜️</text></svg>">
+<link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+
+<div id="chrome-top"></div>
+
+<main>
+  <section class="hero">
+    <div class="wrap hero-in">
+      <h1>Book the whole place.<br><em>Bring the whole crew.</em></h1>
+      <p>Desert homes with private pools, room for fourteen, and a backyard nobody wants to leave.</p>
+
+      <form class="searchbar" id="heroSearch" autocomplete="off">
+        <button type="button" class="seg" data-open="where" id="segWhere">
+          <b>Where</b><span>Search destinations</span>
+        </button>
+        <span class="div"></span>
+        <button type="button" class="seg" data-open="dates" id="segIn">
+          <b>Check in</b><span>Add dates</span>
+        </button>
+        <span class="div"></span>
+        <button type="button" class="seg" data-open="dates" id="segOut">
+          <b>Check out</b><span>Add dates</span>
+        </button>
+        <span class="div"></span>
+        <button type="button" class="seg" data-open="guests" id="segGuests">
+          <b>Who</b><span>Add guests</span>
+        </button>
+        <button type="submit" class="go" aria-label="Search stays"></button>
+      </form>
+      <div style="position:relative;max-width:880px;margin:0 auto">
+        <div id="heroCal" class="cal-pop" hidden style="left:50%;right:auto;transform:translateX(-50%)"></div>
+        <div id="heroGuests" class="guest-pop" hidden style="left:auto;right:0;width:340px"></div>
+      </div>
+    </div>
+  </section>
+
+  <nav class="cats" aria-label="Property categories">
+    <div class="cats-in" id="cats"></div>
+  </nav>
+
+  <div class="wrap">
+    <div id="resultCount" class="muted" style="padding-top:22px;font-size:14px"></div>
+    <div class="grid" id="grid"></div>
+  </div>
+</main>
+
+<div id="chrome-bottom"></div>
+
+<script src="assets/data.js"></script>
+<script src="assets/app.js"></script>
+<script>
+(function () {
+  'use strict';
+  const K = window.KS, L = window.SITE.listing;
+  const { $, el, esc, money, img, ICONS } = K;
+
+  /* ---- chrome ---- */
+  $('#chrome-top').outerHTML = K.header('home');
+  $('#chrome-bottom').outerHTML = K.footer();
+  K.wireChrome();
+  $('#heroSearch .go').innerHTML = ICONS.search;
+
+  /* ---- listings: the real one first, then the demo neighbours ---- */
+  const hero = L.hero.map(h => h.url);
+  const featured = {
+    id: L.id,
+    title: 'Chandler, Arizona',
+    subtitle: L.title,
+    location: L.city,
+    price: L.pricing.nightly,
+    rating: L.rating,
+    reviews: L.reviewCount,
+    photos: hero.slice(0, 6),
+    guests: 14, beds: 9, baths: 2,
+    badge: 'Guest favourite',
+    tags: ['pool', 'family', 'design'],
+    href: 'listing.html',
+  };
+  const others = window.SITE.siblings.map((s, i) => ({
+    id: s.id, title: s.location, subtitle: s.title, location: s.location,
+    price: s.price, rating: s.rating, reviews: s.reviews, photos: s.photos,
+    guests: s.guests, beds: s.beds, baths: s.baths,
+    tags: [['pool','family'],['design'],['family','pool'],['pool'],['countryside'],['pool','family'],['design'],['pool','golf']][i] || ['family'],
+    href: 'listing.html',
+  }));
+  const ALL = [featured].concat(others);
+
+  /* ---- category rail ---- */
+  const CATS = [
+    ['all', 'All homes', ICONS.house],
+    ['pool', 'Amazing pools', ICONS.pool],
+    ['family', 'Family friendly', ICONS.pets],
+    ['design', 'Design', ICONS.sparkle],
+    ['golf', 'Golfing', ICONS.golf],
+    ['countryside', 'Countryside', ICONS.mountain],
+    ['desert', 'Desert', ICONS.desert],
+    ['bbq', 'Outdoor dining', ICONS.grillsvg],
+    ['work', 'Work friendly', ICONS.desk],
+  ];
+  let active = 'all';
+
+  $('#cats').innerHTML = CATS.map(([k, label, ic]) =>
+    `<button class="cat${k === 'all' ? ' on' : ''}" data-cat="${k}" aria-pressed="${k === 'all'}">${ic}<span>${label}</span></button>`
+  ).join('') + `<button class="filter-btn" data-demo>${ICONS.sliders} Filters</button>`;
+
+  $('#cats').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-cat]');
+    if (!b) return;
+    active = b.dataset.cat;
+    K.$$('.cat').forEach(c => { const on = c === b; c.classList.toggle('on', on); c.setAttribute('aria-pressed', on); });
+    paint();
+  });
+
+  /* ---- cards ---- */
+  function card(p) {
+    const nightly = money(p.price);
+    const s = K.search.get();
+    const n = (s.checkIn && s.checkOut) ? K.nights(s.checkIn, s.checkOut) : 0;
+    const total = n ? `<span class="muted">${money(p.price * n)} total</span>` : '';
+    return `
+    <article class="card" data-id="${p.id}">
+      <div class="card-media">
+        <div class="card-slides">${p.photos.map((u, i) =>
+          `<img src="${img(u, 480)}" alt="${esc(p.subtitle)} — photo ${i + 1}" loading="${i ? 'lazy' : 'eager'}" decoding="async">`).join('')}</div>
+        ${p.badge ? `<span class="badge">${p.badge}</span>` : ''}
+        <button class="fav${K.favs.has(p.id) ? ' on' : ''}" data-fav="${p.id}" aria-label="Save ${esc(p.subtitle)}" aria-pressed="${K.favs.has(p.id)}">${ICONS.heart}</button>
+        <button class="card-nav prev" data-slide="-1" aria-label="Previous photo" disabled>${ICONS.chevL}</button>
+        <button class="card-nav next" data-slide="1" aria-label="Next photo">${ICONS.chevR}</button>
+        <div class="card-dots">${p.photos.map((_, i) => `<i class="${i ? '' : 'on'}"></i>`).join('')}</div>
+      </div>
+      <a class="card-body" href="${p.href}">
+        <div class="card-row">
+          <span class="card-title">${esc(p.title)}</span>
+          <span class="card-rate">${ICONS.star} ${p.rating.toFixed(2)}</span>
+        </div>
+        <div class="card-sub">${esc(p.subtitle)}</div>
+        <div class="card-sub">${p.guests} guests · ${p.beds} beds · ${p.baths} baths</div>
+        <div class="card-price"><b>${nightly}</b> for 1 night ${total}</div>
+      </a>
+    </article>`;
+  }
+
+  function paint() {
+    const list = active === 'all' ? ALL : ALL.filter(p => p.tags.includes(active));
+    $('#grid').innerHTML = list.map(card).join('');
+    $('#resultCount').textContent = `${list.length} home${list.length === 1 ? '' : 's'} in and around Chandler, Arizona`;
+  }
+
+  /* card interactions: carousel + favourites */
+  $('#grid').addEventListener('click', (e) => {
+    const fav = e.target.closest('[data-fav]');
+    if (fav) {
+      e.preventDefault();
+      const on = K.favs.toggle(fav.dataset.fav);
+      fav.classList.toggle('on', on);
+      fav.setAttribute('aria-pressed', on);
+      K.toast(on ? 'Saved to your wishlist' : 'Removed from your wishlist');
+      return;
+    }
+    const nav = e.target.closest('[data-slide]');
+    if (!nav) return;
+    e.preventDefault();
+    const media = nav.closest('.card-media');
+    const strip = K.$('.card-slides', media);
+    const count = strip.children.length;
+    let i = +(strip.dataset.i || 0) + (+nav.dataset.slide);
+    i = Math.max(0, Math.min(count - 1, i));
+    strip.dataset.i = i;
+    strip.style.transform = `translateX(${-i * 100}%)`;
+    K.$('.prev', media).disabled = i === 0;
+    K.$('.next', media).disabled = i === count - 1;
+    K.$$('.card-dots i', media).forEach((d, j) => d.classList.toggle('on', j === i));
+  });
+
+  /* ---- hero search ---- */
+  const state = K.search.get();
+  const calBox = $('#heroCal'), guestBox = $('#heroGuests');
+
+  function syncSegs() {
+    const s = K.search.get();
+    $('#segWhere').classList.toggle('filled', !!s.where);
+    K.$('span', $('#segWhere')).textContent = s.where || 'Search destinations';
+    K.$('span', $('#segIn')).textContent = s.checkIn ? K.fmtShort(s.checkIn) : 'Add dates';
+    $('#segIn').classList.toggle('filled', !!s.checkIn);
+    K.$('span', $('#segOut')).textContent = s.checkOut ? K.fmtShort(s.checkOut) : 'Add dates';
+    $('#segOut').classList.toggle('filled', !!s.checkOut);
+    K.$('span', $('#segGuests')).textContent = K.search.guests(s) ? K.search.guestLabel(s) : 'Add guests';
+    $('#segGuests').classList.toggle('filled', !!K.search.guests(s));
+    paint();
+  }
+
+  const cal = K.Calendar(calBox, {
+    checkIn: state.checkIn, checkOut: state.checkOut, minNights: 2,
+    onChange: (r) => { K.search.set(r); syncSegs(); },
+    onDone: () => close(),
+  });
+  K.GuestPicker(guestBox, state, 14, (g) => { K.search.set(g); syncSegs(); });
+
+  function close() { calBox.hidden = true; guestBox.hidden = true; K.$$('.searchbar .seg').forEach(s => s.classList.remove('active')); }
+
+  $('#heroSearch').addEventListener('click', (e) => {
+    const seg = e.target.closest('[data-open]');
+    if (!seg) return;
+    const kind = seg.dataset.open;
+    if (kind === 'where') { K.toast('Destination search is not wired up in this mockup — showing Chandler, Arizona.'); return; }
+    const box = kind === 'guests' ? guestBox : calBox;
+    const wasOpen = !box.hidden;
+    close();
+    box.hidden = wasOpen;
+  });
+
+  $('#heroSearch').addEventListener('submit', (e) => {
+    e.preventDefault();
+    close();
+    const s = K.search.get();
+    K.toast(s.checkIn && s.checkOut
+      ? `Showing stays for ${K.fmtShort(s.checkIn)} – ${K.fmtShort(s.checkOut)}, ${K.search.guestLabel(s)}`
+      : 'Add dates to see total prices');
+    document.querySelector('.cats').scrollIntoView({ behavior: 'smooth' });
+  });
+
+  /* Capture phase: the calendar and guest picker rebuild their own innerHTML on
+     click, which detaches e.target before a bubbling listener would see it — the
+     popover would then read as an "outside" click and close itself. */
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('#heroSearch') && !e.target.closest('.cal-pop') && !e.target.closest('.guest-pop')) close();
+  }, true);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+
+  syncSegs();
+})();
+</script>
+</body>
+</html>
