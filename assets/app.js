@@ -114,8 +114,15 @@
   const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const money = (n) => '$' + Math.round(n).toLocaleString('en-US');
 
-  /* resize muscache images on the fly — big win on the photo grids */
-  const img = (url, w) => (/muscache\.com/.test(url) ? url + (url.includes('?') ? '&' : '?') + 'im_w=' + w : url);
+  /* Resize muscache images on the fly — a big win on the photo grids. The CDN
+     renders only this fixed ladder of widths; any other value 404s, so round the
+     requested width up to the next rung rather than passing it through. */
+  const IM_WIDTHS = [120, 240, 320, 480, 720, 960, 1200, 1440, 1920, 2560];
+  const img = (url, w) => {
+    if (!/muscache\.com/.test(url)) return url;
+    const width = IM_WIDTHS.find((x) => x >= w) || IM_WIDTHS[IM_WIDTHS.length - 1];
+    return url + (url.includes('?') ? '&' : '?') + 'im_w=' + width;
+  };
 
   const MON = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
   const MON_S = MON.map((m) => m.slice(0, 3));
