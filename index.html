@@ -16,6 +16,7 @@
 
 <main>
   <section class="hero">
+    <div class="hero-glow" aria-hidden="true"></div>
     <div class="wrap hero-in">
       <h1>Book the whole place.<br><em>Bring the whole crew.</em></h1>
       <p>Desert homes with private pools, room for fourteen, and a backyard nobody wants to leave.</p>
@@ -38,9 +39,9 @@
         </button>
         <button type="submit" class="go" aria-label="Search stays"></button>
       </form>
-      <div style="position:relative;max-width:880px;margin:0 auto">
-        <div id="heroCal" class="cal-pop" hidden style="left:50%;right:auto;transform:translateX(-50%)"></div>
-        <div id="heroGuests" class="guest-pop" hidden style="left:auto;right:0;width:340px"></div>
+      <div class="hero-pops">
+        <div id="heroCal" class="cal-pop" hidden></div>
+        <div id="heroGuests" class="guest-pop" hidden></div>
       </div>
     </div>
   </section>
@@ -218,6 +219,7 @@
     const wasOpen = !box.hidden;
     close();
     box.hidden = wasOpen;
+    if (!box.hidden) { seg.classList.add('active'); K.fitPopover(box); }
   });
 
   $('#heroSearch').addEventListener('submit', (e) => {

@@ -173,13 +173,18 @@ h3 { font-size: 17px; }
 
 /* ---------- Hero ------------------------------------------------------- */
 
-.hero { position: relative; padding: 56px 0 40px; overflow: hidden; }
-.hero::before {
+/* No overflow:hidden here — it would clip the date/guest popovers where the
+   section ends. The decorative glow is clipped by its own layer instead. */
+.hero { position: relative; padding: 56px 0 40px; }
+.hero-glow { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+.hero-glow::before {
   content: ""; position: absolute; inset: -40% 0 auto -10%; height: 520px;
   background: radial-gradient(60% 60% at 25% 40%, rgba(224, 36, 94, .13), transparent 70%),
               radial-gradient(50% 50% at 80% 20%, rgba(240, 101, 63, .12), transparent 70%);
-  pointer-events: none;
 }
+/* Deliberately no z-index: that would create a stacking context and trap the
+   popovers (z-index 70) below the sticky category bar (z-index 40). Painting
+   above .hero-glow is handled by DOM order instead. */
 .hero-in { position: relative; text-align: center; }
 .hero h1 { font-size: clamp(32px, 4.6vw, 54px); letter-spacing: -.035em; margin-bottom: 14px; }
 .hero h1 em { font-style: normal; background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
@@ -526,6 +531,25 @@ ul.host-facts { padding: 0; margin: 0 0 18px; }
   position: absolute; top: calc(100% + 10px); left: 0; right: 0; z-index: 70;
   background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-lg);
   box-shadow: var(--shadow-lg); padding: 20px; animation: pop .18s var(--ease);
+}
+
+/* Hero popovers. Centred with auto margins rather than a translate, so the
+   open animation's transform doesn't fight the positioning. */
+.hero-pops { position: relative; max-width: 880px; margin: 0 auto; }
+#heroCal { left: 0; right: 0; margin: 0 auto; }
+#heroGuests { left: auto; right: 0; width: 340px; }
+
+/* On phones a dropdown taller than the viewport is unusable, so the popovers
+   become bottom sheets. IDs are listed because the base rules are ID-scoped. */
+@media (max-width: 780px) {
+  #heroCal, #heroGuests, #hdrCal, #hdrGuests, #bookCal, #bookGuests {
+    position: fixed; inset: auto 8px max(8px, env(safe-area-inset-bottom)) 8px;
+    top: auto; width: auto; max-width: none; margin: 0; transform: none;
+    max-height: 80vh; overflow-y: auto; z-index: 90;
+    /* huge spread doubles as a full-screen scrim — no extra markup, and it
+       stays click-through so the outside-click handler still closes the sheet */
+    box-shadow: var(--shadow-lg), 0 0 0 100vmax rgba(0, 0, 0, .45);
+  }
 }
 .g-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 0; border-bottom: 1px solid var(--line); }
 .g-row:last-of-type { border-bottom: 0; }

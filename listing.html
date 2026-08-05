@@ -462,6 +462,7 @@
     box.hidden = false;
     const field = $(`#bookCard [data-open="${keepOpen === 'bookGuests' ? 'guests' : 'dates'}"]`);
     field && field.classList.add('active');
+    K.fitPopover(box);
   }
 
   function renderMobileBar() {
@@ -518,7 +519,7 @@
         const box = f.dataset.open === 'guests' ? gBox : calBox;
         const wasOpen = !box.hidden;
         close();
-        if (!wasOpen) { box.hidden = false; f.classList.add('active'); }
+        if (!wasOpen) { box.hidden = false; f.classList.add('active'); K.fitPopover(box); }
         return;
       }
       if (e.target.closest('#reserveBtn')) reserve();

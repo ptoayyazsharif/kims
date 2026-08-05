@@ -206,6 +206,23 @@
     },
   };
 
+  /**
+   * Keeps an open popover inside the viewport. Below 780px the popovers are
+   * fixed bottom sheets and size themselves; above that they drop from a field
+   * whose position varies with scroll, so the cap is measured at open time.
+   */
+  function fitPopover(box) {
+    if (!box || box.hidden) return;
+    box.style.maxHeight = '';
+    box.style.overflowY = '';
+    if (window.matchMedia('(max-width: 780px)').matches) return;
+    const avail = window.innerHeight - box.getBoundingClientRect().top - 16;
+    if (avail > 180 && box.scrollHeight > avail) {
+      box.style.maxHeight = avail + 'px';
+      box.style.overflowY = 'auto';
+    }
+  }
+
   /* ---------- date-range calendar ------------------------------------------- */
 
   /**
@@ -439,7 +456,7 @@
       const box = seg.dataset.open === 'guests' ? gBox : calBox;
       const wasOpen = !box.hidden;
       close();
-      if (!wasOpen) { box.hidden = false; seg.classList.add('active'); }
+      if (!wasOpen) { box.hidden = false; seg.classList.add('active'); fitPopover(box); }
     });
     form.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -472,7 +489,7 @@
   window.KS = {
     ICONS, amenityIcon, $, $$, el, esc, money, img,
     MON, MON_S, ymd, parseYmd, today, addDays, nights, fmtShort, fmtLong,
-    initTheme, toggleTheme, favs, toast, search, Calendar, GuestPicker,
+    initTheme, toggleTheme, favs, toast, search, Calendar, GuestPicker, fitPopover,
     header, footer, wireChrome, wireHeaderSearch,
   };
 
